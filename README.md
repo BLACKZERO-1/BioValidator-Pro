@@ -114,27 +114,19 @@ ATGAAAAAAAAACCCCCCCCCGGGGGGGGGTTTTTTTTTTCGATCGATCGATCGATCGATCGATCGCTGGTGGGCTGGTG
 
 ## 📸 Screenshots
 
-### Dashboard Overview
-![Dashboard](docs/screenshots/dashboard.png)
-*Main interface showing all 4 validation modules*
+## 📸 Gallery
 
-### Module 1: Synthesis Analysis
-![Synthesis](docs/screenshots/synthesis.png)
-*GC content analysis with error detection*
+### Main Dashboard
+![Dashboard](backend/docs/screenshots/dashboard.png)
 
-### Module 2: Restriction Mapping
-![Cloning](docs/screenshots/cloning.png)
-*Virtual gel and enzyme cut site visualization*
+### Analysis Modules
+| Synthesis Feasibility | Cloning & Restriction |
+| :---: | :---: |
+| ![Synthesis](backend/docs/screenshots/synthesis.png) | ![Cloning](backend/docs/screenshots/cloning.png) |
 
-### Module 3: Translation Simulator
-![Translation](docs/screenshots/translation.png)
-*Real-time ribosome animation with CAI scoring*
-
-### Module 4: Biosafety Screening
-![Safety](docs/screenshots/safety.png)
-*Threat detection and genome risk mapping*
-
----
+| Protein Expression | Bio-Integrity Console |
+| :---: | :---: |
+| ![Translation](backend/docs/screenshots/translation.png) | ![Safety](backend/docs/screenshots/safety.png) |
 
 ## 🐛 Troubleshooting
 
