@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BioValidator - Pro Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        
+        /* Module 1: Gauge Animation */
+        .circular-chart { display: block; margin: 0 auto; max-width: 100%; max-height: 250px; }
+        .circle-bg { fill: none; stroke: #f1f5f9; stroke-width: 3; }
+        .circle { fill: none; stroke-width: 3; stroke-linecap: round; animation: progress 1s ease-out forwards; }
+        @keyframes progress { 0% { stroke-dasharray: 0 100; } }
+        .percentage { fill: #1e293b; font-family: sans-serif; font-weight: bold; font-size: 0.6em; text-anchor: middle; }
+        
+        /* Module 3: Ribosome Animation */
+        @keyframes floatUp {
+            0% { transform: translateY(20px) scale(0); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        .amino-acid { animation: floatUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    </style>
+</head>
+<body class="bg-slate-50 p-6 md:p-12 text-slate-800">
+
+    <div class="max-w-7xl mx-auto space-y-12">
+        
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-purple-600 to-orange-500"></div>
+            <h1 class="text-3xl font-black tracking-tight text-slate-900 mb-2">🧬 BioValidator <span class="text-blue-600">Pro</span></h1>
+            <p class="text-slate-500 mb-8">Genetic Engineering Validation Platform</p>
+
+            <div class="flex justify-center gap-4 mb-6">
+                <button onclick="switchTab('file')" id="btn-file" class="px-6 py-2 rounded-full font-bold text-xs uppercase tracking-wide transition bg-slate-900 text-white shadow-md">Upload File</button>
+                <button onclick="switchTab('text')" id="btn-text" class="px-6 py-2 rounded-full font-bold text-xs uppercase tracking-wide transition bg-white text-slate-500 border border-slate-200 hover:bg-slate-50">Paste Sequence</button>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data">
+                <div id="tab-file-content" class="block mb-4">
+                    <div class="relative w-full h-32 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 flex items-center justify-center hover:border-blue-500 transition cursor-pointer group">
+                        <input type="file" name="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="updateFileName(this)">
+                        <p class="text-slate-400 font-bold group-hover:text-blue-600 transition" id="file-label">Drop FASTA file here</p>
+                    </div>
+                </div>
+                <div id="tab-text-content" class="hidden mb-4">
+                    <textarea name="sequence" rows="4" class="w-full p-4 bg-slate-900 text-green-400 font-mono text-xs rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder=">Seq_1&#10;ATGC...">{{ sequence }}</textarea>
+                </div>
+                <button type="submit" class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200">Analyze Sequence</button>
+            </form>
+        </div>
+
+        {% if results %}
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="p-4 rounded-xl border {{ 'bg-green-50 border-green-200 text-green-800' if results.synthesis.homopolymers.count == 0 else 'bg-red-50 border-red-200 text-red-800' }}">
+                <p class="text-[10px] font-bold uppercase opacity-60">Synthesis</p>
+                <p class="font-black text-lg">{{ 'PRINTABLE' if results.synthesis.homopolymers.count == 0 else 'ERRORS' }}</p>
+            </div>
+            <div class="p-4 rounded-xl border {{ 'bg-green-50 border-green-200 text-green-800' if results.restriction.single_cutters else 'bg-yellow-50 border-yellow-200 text-yellow-800' }}">
+                <p class="text-[10px] font-bold uppercase opacity-60">Cloning</p>
+                <p class="font-black text-lg">{{ 'READY' if results.restriction.single_cutters else 'NO CUTTERS' }}</p>
+            </div>
+            <div class="p-4 rounded-xl border {{ 'bg-green-50 border-green-200 text-green-800' if results.optimization.cai_after > 0.8 else 'bg-orange-50 border-orange-200 text-orange-800' }}">
+                <p class="text-[10px] font-bold uppercase opacity-60">Expression</p>
+                <p class="font-black text-lg">{{ 'HIGH' if results.optimization.cai_after > 0.8 else 'MODERATE' }}</p>
+            </div>
+            <div class="p-4 rounded-xl border {{ 'bg-green-50 border-green-200 text-green-800' if results.prediction.status == 'SECURE' else 'bg-red-50 border-red-200 text-red-800' }}">
+                <p class="text-[10px] font-bold uppercase opacity-60">Safety</p>
+                <p class="font-black text-lg">{{ results.prediction.status }}</p>
+            </div>
+        </div>
+
+        <section class="space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+                <div><h2 class="text-xl font-bold text-slate-900">1. Synthesis Feasibility</h2><p class="text-sm text-slate-500">Physical Printability Check</p></div>
+                <span class="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">Manufacturing</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <p class="text-xs font-bold text-slate-400 uppercase mb-2">Length</p>
+                    <svg viewBox="0 0 36 36" class="circular-chart w-20 h-20">
+                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="circle" stroke="#3b82f6" stroke-dasharray="{{ (results.synthesis.length.value / 10000 * 100)|int }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <text x="18" y="20.35" class="percentage">{{ results.synthesis.length.value }}</text>
+                    </svg>
+                    <div class="text-xs font-bold text-slate-500 mt-2">{{ results.synthesis.length.message }}</div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <p class="text-xs font-bold text-slate-400 uppercase mb-2">GC Content</p>
+                    <svg viewBox="0 0 36 36" class="circular-chart w-20 h-20">
+                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="circle" stroke="{{ '#22c55e' if results.synthesis.gc.status == 'PASS' else '#ef4444' }}" stroke-dasharray="{{ results.synthesis.gc.value }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <text x="18" y="20.35" class="percentage">{{ results.synthesis.gc.value }}%</text>
+                    </svg>
+                    <div class="text-xs font-bold {{ 'text-green-600' if results.synthesis.gc.status == 'PASS' else 'text-red-600' }} mt-2">{{ results.synthesis.gc.risk }} RISK</div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div><p class="text-xs font-bold text-slate-400 uppercase">Homopolymers</p><p class="text-3xl font-black mt-1 {{ 'text-red-500' if results.synthesis.homopolymers.count > 0 else 'text-slate-800' }}">{{ results.synthesis.homopolymers.count }}</p></div>
+                    <div class="space-y-1 mt-2">
+                        {% set bases = ['A', 'T', 'G', 'C'] %}{% set colors = ['bg-green-500', 'bg-red-500', 'bg-yellow-500', 'bg-blue-500'] %}
+                        {% for i in range(4) %}{% set count = results.synthesis.homopolymers.details | selectattr('base', 'equalto', bases[i]) | list | length %}
+                        <div class="flex items-center gap-2"><span class="text-[9px] font-bold text-slate-400 w-2">{{ bases[i] }}</span><div class="flex-1 h-1 bg-slate-100 rounded-full"><div class="h-full {{ colors[i] }} rounded-full" style="width: {{ count * 10 }}%"></div></div></div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div><p class="text-xs font-bold text-slate-400 uppercase">Repeats</p><p class="text-3xl font-black mt-1 {{ 'text-yellow-500' if results.synthesis.repeats.count > 0 else 'text-slate-800' }}">{{ results.synthesis.repeats.count }}</p></div>
+                    <div class="mt-2">
+                        {% set cvg = (results.synthesis.repeats.count * 20 / results.synthesis.length.value * 100)|int %}
+                        <div class="text-[9px] font-bold text-slate-400 mb-1 flex justify-between"><span>Unique</span><span>{{ cvg }}% Rep</span></div>
+                        <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden flex"><div class="h-full bg-slate-300" style="width: {{ 100 - cvg }}%"></div><div class="h-full bg-yellow-400" style="width: {{ cvg }}%"></div></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-slate-800 text-sm">GC Content Landscape</h3><span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">GC %</span></div>
+                    <div class="relative h-48 w-full"><canvas id="gcChart"></canvas></div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold text-slate-800 text-sm mb-4">Distribution</h3>
+                    <div class="relative h-48 w-full"><canvas id="gcHistChart"></canvas></div>
+                </div>
+            </div>
+
+            {% if results.synthesis.homopolymers.count > 0 or results.synthesis.repeats.count > 0 %}
+            <div class="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 overflow-hidden relative">
+                <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-white text-sm">Sequence Error Map</h3><div class="flex gap-3"><div class="flex items-center text-[10px] text-slate-400 uppercase font-bold tracking-wider"><span class="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5"></span> Homopolymer</div><div class="flex items-center text-[10px] text-slate-400 uppercase font-bold tracking-wider"><span class="w-1.5 h-1.5 bg-yellow-400 rounded-full mr-1.5"></span> Repeat</div></div></div>
+                <div class="relative w-full h-10 bg-slate-800/50 rounded-lg border border-slate-700/50 overflow-hidden backdrop-blur-sm">
+                    <div class="absolute w-full h-px bg-slate-600 top-1/2 transform -translate-y-1/2"></div>
+                    {% for item in results.synthesis.homopolymers.details %}
+                    <div class="absolute top-1/2 transform -translate-y-1/2 h-5 w-1 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)] z-10 cursor-help hover:scale-y-125 transition" style="left: {{ (item.start / results.synthesis.length.value * 100) }}%; border-radius: 99px;" title="Homopolymer at {{ item.start }}"></div>
+                    {% endfor %}
+                    {% for item in results.synthesis.repeats.details %}
+                    <div class="absolute top-1/2 transform -translate-y-1/2 h-3 w-1 bg-yellow-400 opacity-80" style="left: {{ (item.start / results.synthesis.length.value * 100) }}%; border-radius: 99px;" title="Repeat at {{ item.start }}"></div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </section>
+
+        <section class="space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+                <div><h2 class="text-xl font-bold text-slate-900">2. Cloning & Restriction</h2><p class="text-sm text-slate-500">Assembly Simulation</p></div>
+                <span class="bg-purple-100 text-purple-700 text-xs font-bold px-3 py-1 rounded-full">Assembly</span>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-inner flex flex-col items-center">
+                    <p class="text-slate-400 text-xs font-bold uppercase mb-4">Virtual Agarose Gel</p>
+                    <div class="relative w-32 h-64 bg-black border-2 border-slate-700 rounded-lg shadow-[inset_0_0_20px_rgba(0,0,0,1)]">
+                        <div class="absolute left-0 top-0 bottom-0 w-8 border-r border-slate-800 flex flex-col items-center py-2 text-[8px] text-slate-500">
+                            <div class="w-full h-px bg-slate-700 mb-8"></div><span>10k</span><div class="w-full h-px bg-slate-700 mt-12"></div><span>1k</span>
+                        </div>
+                        <div class="absolute right-0 top-0 bottom-0 w-20 flex justify-center"><div class="absolute w-12 h-1.5 bg-blue-100 shadow-[0_0_10px_#60a5fa] rounded-full animate-pulse" style="top: {{ results.restriction.gel_pos }}%"></div></div>
+                    </div>
+                    <p class="text-blue-400 font-mono text-xs mt-4">{{ results.restriction.total_len }} bp Band</p>
+                </div>
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                    <div class="flex justify-between mb-4"><h3 class="text-sm font-bold text-slate-700">Enzyme Cut Sites</h3><div class="flex gap-2 text-xs font-bold"><span class="text-purple-600">Single (Gold)</span><span class="text-slate-400">Multi (Noise)</span></div></div>
+                    <div class="h-48 w-full"><canvas id="skylineChart"></canvas></div>
+                    <div class="mt-4 pt-4 border-t border-slate-100">
+                        <p class="text-xs font-bold text-slate-400 mb-2">Recommended Single Cutters:</p>
+                        <div class="flex flex-wrap gap-2">
+                            {% if results.restriction.single_cutters %}
+                                {% for enzyme in results.restriction.single_cutters[:8] %}<span class="px-3 py-1 bg-purple-50 text-purple-700 border border-purple-100 rounded-lg text-xs font-bold">{{ enzyme }}</span>{% endfor %}
+                            {% else %}<span class="text-slate-400 text-xs italic">None found.</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+                <div><h2 class="text-xl font-bold text-slate-900">3. Protein Expression</h2><p class="text-sm text-slate-500">Translation Simulation</p></div>
+                <span class="bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1 rounded-full">Optimization</span>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                    <p class="text-xs font-bold text-slate-400 uppercase mb-4">Codon Fitness</p>
+                    <div class="relative w-32 h-32">
+                        <svg viewBox="0 0 36 36" class="w-full h-full"><path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" /><path class="circle" stroke="#f97316" stroke-dasharray="{{ (results.optimization.cai_after * 100)|int }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" /></svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center"><span class="text-2xl font-black text-slate-800">{{ results.optimization.cai_after }}</span><span class="text-[10px] text-green-500 font-bold">+{{ results.optimization.improvement }}%</span></div>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                    <div class="flex justify-between items-center mb-4 relative z-20">
+                        <div><h3 class="font-bold text-slate-800 text-sm">Live Translation Engine</h3><p class="text-xs text-slate-500">Real-time codon-to-amino acid rendering.</p></div>
+                        <div class="flex items-center gap-3 bg-slate-100 rounded-full px-3 py-1">
+                            <button onclick="toggleSim()" id="playPauseBtn" class="text-slate-600 hover:text-blue-600 transition"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg></button>
+                            <div class="w-px h-4 bg-slate-300"></div><span class="text-[10px] font-bold text-slate-400">SPEED</span><input type="range" min="1" max="10" value="5" class="w-16 accent-blue-600 cursor-pointer" oninput="updateSpeed(this.value)">
+                        </div>
+                    </div>
+                    <div class="relative w-full h-56 bg-gradient-to-b from-slate-50 to-white rounded-xl border border-slate-100 overflow-hidden flex flex-col items-center justify-end pb-4">
+                        <div id="aa-tooltip" class="absolute top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-3 py-1.5 rounded-lg shadow-xl opacity-0 transition-opacity z-30 pointer-events-none">Preparing...</div>
+                        <div class="absolute bottom-24 flex flex-col-reverse items-center gap-1 z-10" id="protein-chain"></div>
+                        <div class="relative z-20 transition-transform duration-100" id="ribosome-body">
+                            <svg class="w-32 h-20 absolute -top-10 left-1/2 -translate-x-1/2 drop-shadow-lg" viewBox="0 0 100 60"><path d="M10,60 C10,10 90,10 90,60 Z" fill="#94a3b8" /></svg>
+                            <svg class="w-36 h-12 relative top-0 drop-shadow-md" viewBox="0 0 120 40"><ellipse cx="60" cy="20" rx="55" ry="15" fill="#64748b" /></svg>
+                        </div>
+                        <div class="absolute bottom-6 w-full h-8 bg-orange-50 border-y border-orange-100 flex items-center overflow-hidden">
+                            <div id="mrna-track" class="flex font-mono font-bold text-orange-400 text-sm whitespace-nowrap px-1/2"></div>
+                            <div class="absolute left-1/2 -translate-x-1/2 w-8 h-10 border-2 border-blue-500 bg-blue-500/10 rounded z-30 shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
+                        </div>
+                        <div class="absolute bottom-1 right-2 flex gap-2 text-[8px] font-bold text-slate-400">
+                            <span class="flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400 mr-1"></span>Hydrophobic</span>
+                            <span class="flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-blue-400 mr-1"></span>Polar</span>
+                            <span class="flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-red-400 mr-1"></span>Acidic</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-slate-900 rounded-xl p-4 flex items-center shadow-lg"><div class="flex-1 font-mono text-xs text-green-400 truncate mr-4">{{ results.optimization.optimized_dna }}</div><button class="text-xs bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-bold transition">Copy DNA</button></div>
+        </section>
+
+        <section class="space-y-6 pb-12">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg">4</div>
+                    <div><h2 class="text-xl font-bold text-slate-900">Bio-Integrity Monitor</h2><p class="text-sm text-slate-500">Security & Stability Analysis</p></div>
+                </div>
+                <div class="flex items-center gap-2 px-4 py-2 rounded-lg border {{ 'bg-green-50 border-green-200 text-green-700' if results.prediction.score > 80 else 'bg-red-50 border-red-200 text-red-700' }}">
+                    <div class="w-2 h-2 rounded-full {{ 'bg-green-500' if results.prediction.score > 80 else 'bg-red-500' }} animate-pulse"></div>
+                    <span class="text-xs font-bold uppercase tracking-wider">System Status: {{ results.prediction.status }}</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="space-y-4">
+                    <div class="group relative bg-white p-5 rounded-xl border border-slate-200 shadow-sm transition-all hover:shadow-md hover:border-red-300">
+                        <div class="flex justify-between items-start mb-2"><div><h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Protein Integrity</h4><p class="text-sm font-bold text-slate-800">Premature Stops</p></div><span class="px-2 py-1 rounded text-[10px] font-bold {{ 'bg-green-100 text-green-700' if results.prediction.checks.stops.status == 'PASS' else 'bg-red-100 text-red-600' }}">{{ results.prediction.checks.stops.status }}</span></div>
+                        <div class="flex items-end justify-between"><span class="text-3xl font-black {{ 'text-slate-200' if results.prediction.checks.stops.status == 'PASS' else 'text-red-500' }}">{{ results.prediction.checks.stops.count }}</span><span class="text-[10px] text-slate-400">Critical Failure</span></div>
+                        <div class="absolute bottom-0 left-4 right-4 h-1 bg-slate-100 rounded-t-full overflow-hidden"><div class="h-full bg-red-500 transition-all duration-500" style="width: {{ '0%' if results.prediction.checks.stops.status == 'PASS' else '100%' }}"></div></div>
+                    </div>
+                    <div class="group relative bg-white p-5 rounded-xl border border-slate-200 shadow-sm transition-all hover:shadow-md hover:border-blue-300">
+                        <div class="flex justify-between items-start mb-2"><div><h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest">mRNA Structure</h4><p class="text-sm font-bold text-slate-800">Strong Hairpins</p></div><span class="px-2 py-1 rounded text-[10px] font-bold {{ 'bg-green-100 text-green-700' if results.prediction.checks.hairpins.status == 'PASS' else 'bg-blue-100 text-blue-600' }}">{{ results.prediction.checks.hairpins.status }}</span></div>
+                        <div class="flex items-end justify-between"><span class="text-3xl font-black {{ 'text-slate-200' if results.prediction.checks.hairpins.status == 'PASS' else 'text-blue-500' }}">{{ results.prediction.checks.hairpins.count }}</span><span class="text-[10px] text-slate-400">Translation Slowdown</span></div>
+                        <div class="absolute bottom-0 left-4 right-4 h-1 bg-slate-100 rounded-t-full overflow-hidden"><div class="h-full bg-blue-500 transition-all duration-500" style="width: {{ '0%' if results.prediction.checks.hairpins.status == 'PASS' else '100%' }}"></div></div>
+                    </div>
+                    <div class="group relative bg-white p-5 rounded-xl border border-slate-200 shadow-sm transition-all hover:shadow-md hover:border-orange-300">
+                        <div class="flex justify-between items-start mb-2"><div><h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Stability</h4><p class="text-sm font-bold text-slate-800">Chi Sites</p></div><span class="px-2 py-1 rounded text-[10px] font-bold {{ 'bg-green-100 text-green-700' if results.prediction.checks.chi.status == 'PASS' else 'bg-orange-100 text-orange-600' }}">{{ results.prediction.checks.chi.status }}</span></div>
+                        <div class="flex items-end justify-between"><span class="text-3xl font-black {{ 'text-slate-200' if results.prediction.checks.chi.status == 'PASS' else 'text-orange-500' }}">{{ results.prediction.checks.chi.count }}</span><span class="text-[10px] text-slate-400">Recombination Risk</span></div>
+                        <div class="absolute bottom-0 left-4 right-4 h-1 bg-slate-100 rounded-t-full overflow-hidden"><div class="h-full bg-orange-500 transition-all duration-500" style="width: {{ '0%' if results.prediction.checks.chi.status == 'PASS' else '100%' }}"></div></div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-slate-800 text-sm">Sequence Threat Density</h3><div class="flex gap-3 text-[10px] font-bold"><span class="flex items-center text-red-500"><span class="w-2 h-2 bg-red-500 rounded-full mr-1"></span> Critical</span><span class="flex items-center text-orange-500"><span class="w-2 h-2 bg-orange-500 rounded-full mr-1"></span> Warning</span></div></div>
+                        <div class="h-48 w-full"><canvas id="riskDensityChart"></canvas></div>
+                    </div>
+                    <div class="bg-slate-900 p-6 rounded-xl border border-slate-800 shadow-lg relative overflow-hidden">
+                        <div class="flex justify-between items-center mb-6"><h3 class="font-bold text-white text-sm">Genome Risk Map</h3><span class="text-[10px] font-mono text-slate-400">{{ results.synthesis.length.value }} bp</span></div>
+                        <div class="relative w-full h-14 bg-slate-800 rounded-lg border border-slate-700 flex items-center px-2">
+                            <div class="absolute inset-0 flex justify-between px-2 pointer-events-none opacity-20"><div class="w-px h-full bg-slate-400"></div><div class="w-px h-full bg-slate-400"></div><div class="w-px h-full bg-slate-400"></div><div class="w-px h-full bg-slate-400"></div></div>
+                            <div class="absolute w-[98%] h-2 bg-slate-600 rounded-full top-1/2 -translate-y-1/2 left-[1%]"></div>
+                            {% for issue in results.prediction.issues %}
+                            <div class="absolute top-1/2 -translate-y-1/2 h-8 w-1 rounded-sm cursor-pointer hover:scale-125 hover:z-50 transition-all duration-200 shadow-lg shadow-black/50 {{ 'bg-red-500' if issue.color == 'red' else ('bg-orange-500' if issue.color == 'orange' else 'bg-blue-400') }}" style="left: {{ (issue.start / results.synthesis.length.value * 100) }}%; width: max(4px, {{ ((issue.end - issue.start) / results.synthesis.length.value * 100) }}%)" title="{{ issue.type }} @ {{ issue.start }}"></div>
+                            {% endfor %}
+                        </div>
+                        <div class="flex gap-6 mt-4 justify-center">
+                            <div class="flex items-center gap-2"><div class="w-3 h-3 bg-red-500 rounded-sm"></div><span class="text-[10px] font-bold text-slate-400 uppercase">Stop Codon</span></div>
+                            <div class="flex items-center gap-2"><div class="w-3 h-3 bg-orange-500 rounded-sm"></div><span class="text-[10px] font-bold text-slate-400 uppercase">Chi Site</span></div>
+                            <div class="flex items-center gap-2"><div class="w-3 h-3 bg-blue-400 rounded-sm"></div><span class="text-[10px] font-bold text-slate-400 uppercase">Hairpin</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {% endif %}
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            document.getElementById('tab-file-content').classList.toggle('hidden', tab !== 'file');
+            document.getElementById('tab-text-content').classList.toggle('hidden', tab !== 'text');
+            document.getElementById('btn-file').className = tab === 'file' ? "px-6 py-2 rounded-full font-bold text-xs uppercase tracking-wide transition bg-slate-900 text-white shadow-md" : "px-6 py-2 rounded-full font-bold text-xs uppercase tracking-wide transition bg-white text-slate-500 border border-slate-200 hover:bg-slate-50";
+            document.getElementById('btn-text').className = tab === 'text' ? "px-6 py-2 rounded-full font-bold text-xs uppercase tracking-wide transition bg-slate-900 text-white shadow-md" : "px-6 py-2 rounded-full font-bold text-xs uppercase tracking-wide transition bg-white text-slate-500 border border-slate-200 hover:bg-slate-50";
+        }
+        function updateFileName(input) { document.getElementById('file-label').innerHTML = input.files[0] ? `Selected: <span class="text-blue-600">${input.files[0].name}</span>` : "Drop FASTA file here"; }
+    </script>
+
+    {% if results %}
+    <script>
+        // --- MODULE 1 GRAPHS (RESTORED) ---
+        const gcCtx = document.getElementById('gcChart').getContext('2d');
+        const gradient = gcCtx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(37, 99, 235, 0.4)'); gradient.addColorStop(1, 'rgba(37, 99, 235, 0.0)'); 
+        new Chart(gcCtx, { type: 'line', data: { labels: {{ results.synthesis.gc_plot['labels'] | tojson }}, datasets: [{ label: 'GC %', data: {{ results.synthesis.gc_plot['values'] | tojson }}, borderColor: '#2563eb', backgroundColor: gradient, borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: {display: false}, y: {min:0, max:100, grid: {color:'#f1f5f9'}} }, plugins: {legend: {display: false}} } });
+
+        new Chart(document.getElementById('gcHistChart').getContext('2d'), { type: 'bar', data: { labels: ['0-10', '10-20', '20-30', '30-40', '40-50', '50-60', '60-70', '70-80', '80-90', '90-100'], datasets: [{ label: 'Blocks', data: {{ results.synthesis.gc_hist | tojson }}, backgroundColor: '#3b82f6', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: {display: false, grid: {display:false}}, y: {display: false, grid: {display:false}} }, plugins: { legend: {display: false} } } });
+
+        // --- MODULE 2 SKYLINE ---
+        const skylineData = [];
+        {% for site in results.restriction.sites %}
+            {% set y_val = 0.2 %}
+            {% if site.enzyme in results.restriction.single_cutters %}{% set y_val = 1.0 %}{% elif site.enzyme in results.restriction.double_cutters %}{% set y_val = 0.5 %}{% endif %}
+            skylineData.push({x: {{ site.position }}, y: {{ y_val }}, enzyme: "{{ site.enzyme }}"});
+        {% endfor %}
+        new Chart(document.getElementById('skylineChart').getContext('2d'), { type: 'bar', data: { datasets: [{ data: skylineData, backgroundColor: (ctx) => ctx.raw?.y === 1.0 ? '#9333ea' : '#cbd5e1', barThickness: 3 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: {type: 'linear', min:0, max:{{results.restriction.total_len}}, display: false}, y: {display: false, max: 1.2} }, plugins: { legend: {display: false}, tooltip: { callbacks: { label: (ctx) => ctx.raw.enzyme } } } } });
+
+        // --- MODULE 3 SIMULATOR (WITH CONTROLS) ---
+        // 1. Biological Data
+        const CODON_TABLE = { 'ATA':'I', 'ATC':'I', 'ATT':'I', 'ATG':'M', 'ACA':'T', 'ACC':'T', 'ACG':'T', 'ACT':'T', 'AAC':'N', 'AAT':'N', 'AAA':'K', 'AAG':'K', 'AGC':'S', 'AGT':'S', 'AGA':'R', 'AGG':'R', 'CTA':'L', 'CTC':'L', 'CTG':'L', 'CTT':'L', 'CCA':'P', 'CCC':'P', 'CCG':'P', 'CCT':'P', 'CAC':'H', 'CAT':'H', 'CAA':'Q', 'CAG':'Q', 'CGA':'R', 'CGC':'R', 'CGG':'R', 'CGT':'R', 'GTA':'V', 'GTC':'V', 'GTG':'V', 'GTT':'V', 'GCA':'A', 'GCC':'A', 'GCG':'A', 'GCT':'A', 'GAC':'D', 'GAT':'D', 'GAA':'E', 'GAG':'E', 'GGA':'G', 'GGC':'G', 'GGG':'G', 'GGT':'G', 'TCA':'S', 'TCC':'S', 'TCG':'S', 'TCT':'S', 'TTC':'F', 'TTT':'F', 'TTA':'L', 'TTG':'L', 'TAC':'Y', 'TAT':'Y', 'TAA':'_', 'TAG':'_', 'TGC':'C', 'TGT':'C', 'TGA':'_', 'TGG':'W' };
+        const AA_DATA = { 'I': {name: 'Isoleucine', color: 'bg-yellow-400', type: 'Hydrophobic'}, 'L': {name: 'Leucine', color: 'bg-yellow-400', type: 'Hydrophobic'}, 'V': {name: 'Valine', color: 'bg-yellow-400', type: 'Hydrophobic'}, 'F': {name: 'Phenylalanine', color: 'bg-yellow-400', type: 'Hydrophobic'}, 'M': {name: 'Methionine', color: 'bg-yellow-500', type: 'Start/Hydrophobic'}, 'C': {name: 'Cysteine', color: 'bg-green-400', type: 'Special'}, 'A': {name: 'Alanine', color: 'bg-yellow-400', type: 'Hydrophobic'}, 'G': {name: 'Glycine', color: 'bg-slate-300', type: 'Special'}, 'P': {name: 'Proline', color: 'bg-yellow-600', type: 'Hydrophobic'}, 'T': {name: 'Threonine', color: 'bg-blue-400', type: 'Polar'}, 'S': {name: 'Serine', color: 'bg-blue-400', type: 'Polar'}, 'Y': {name: 'Tyrosine', color: 'bg-blue-400', type: 'Polar'}, 'W': {name: 'Tryptophan', color: 'bg-yellow-400', type: 'Hydrophobic'}, 'Q': {name: 'Glutamine', color: 'bg-blue-400', type: 'Polar'}, 'N': {name: 'Asparagine', color: 'bg-blue-400', type: 'Polar'}, 'H': {name: 'Histidine', color: 'bg-blue-600', type: 'Basic'}, 'E': {name: 'Glutamic Acid', color: 'bg-red-500', type: 'Acidic'}, 'D': {name: 'Aspartic Acid', color: 'bg-red-500', type: 'Acidic'}, 'K': {name: 'Lysine', color: 'bg-purple-500', type: 'Basic'}, 'R': {name: 'Arginine', color: 'bg-purple-500', type: 'Basic'}, '_': {name: 'STOP', color: 'bg-slate-900', type: 'Stop'} };
+
+        const sequence = "{{ results.optimization.optimized_dna }}";
+        const track = document.getElementById('mrna-track');
+        const chain = document.getElementById('protein-chain');
+        const tooltip = document.getElementById('aa-tooltip');
+        const ribosome = document.getElementById('ribosome-body');
+        
+        let isPlaying = true;
+        let baseSpeed = 5; 
+        let currentPos = 0; 
+        let codonIndex = 0;
+        let spawnInterval;
+
+        track.innerText = sequence + "   " + sequence; 
+
+        function runSim() {
+            if (!isPlaying) return;
+            currentPos += (baseSpeed * 0.5); 
+            const charWidth = 9.6; 
+            const totalWidth = sequence.length * charWidth;
+            if (currentPos >= totalWidth) currentPos = 0;
+            track.style.transform = `translateX(-${currentPos}px)`;
+            if (Math.floor(currentPos) % 10 === 0) { ribosome.style.transform = `translateY(1px)`; setTimeout(() => ribosome.style.transform = `translateY(0)`, 50); }
+            requestAnimationFrame(runSim);
+        }
+
+        function startSpawning() {
+            clearInterval(spawnInterval);
+            spawnInterval = setInterval(() => {
+                if (!isPlaying) return;
+                const codon = sequence.substr(codonIndex, 3);
+                const aaCode = CODON_TABLE[codon] || '?';
+                const aaInfo = AA_DATA[aaCode] || {name: 'Unknown', color: 'bg-gray-400', type: '?'};
+                const bubble = document.createElement('div');
+                bubble.className = `w-5 h-5 rounded-full border border-white shadow-sm amino-acid ${aaInfo.color} cursor-help hover:scale-125 transition-transform`;
+                
+                bubble.onmouseenter = () => { isPlaying = false; tooltip.innerHTML = `<span class="font-bold">${aaInfo.name}</span> (${codon})`; tooltip.classList.remove('opacity-0'); document.getElementById('playPauseBtn').innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'; };
+                bubble.onmouseleave = () => { tooltip.classList.add('opacity-0'); };
+
+                if (chain.children.length > 7) chain.lastElementChild.remove();
+                chain.prepend(bubble);
+                codonIndex += 3;
+                if (codonIndex >= sequence.length) codonIndex = 0;
+            }, 10000 / (baseSpeed * 5)); 
+        }
+
+        function toggleSim() {
+            isPlaying = !isPlaying;
+            const btn = document.getElementById('playPauseBtn');
+            if(isPlaying) { btn.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>'; runSim(); } 
+            else { btn.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'; }
+        }
+
+        function updateSpeed(val) { baseSpeed = parseInt(val); startSpawning(); }
+
+        runSim();
+        startSpawning();
+
+        // --- MODULE 4 RISK DENSITY ---
+        const riskCtx = document.getElementById('riskDensityChart').getContext('2d');
+        const riskGradient = riskCtx.createLinearGradient(0, 0, 0, 200);
+        riskGradient.addColorStop(0, 'rgba(239, 68, 68, 0.5)'); riskGradient.addColorStop(1, 'rgba(239, 68, 68, 0.0)'); 
+        new Chart(riskCtx, { type: 'bar', data: { labels: {{ results.prediction.bin_labels | default([]) | tojson }}, datasets: [{ label: 'Threat Intensity', data: {{ results.prediction.risk_density | default([]) | tojson }}, backgroundColor: riskGradient, borderColor: '#ef4444', borderWidth: 2, borderRadius: 4, barPercentage: 0.9, categoryPercentage: 0.9 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, display: false }, x: { grid: {display:false}, ticks: {font:{size:9}} } }, plugins: { legend: {display: false} } } });
+    </script>
+    {% endif %}
+</body>
+</html>
