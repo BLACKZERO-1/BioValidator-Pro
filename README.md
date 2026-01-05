@@ -182,9 +182,9 @@ Contributions are welcome! Please follow these steps:
 
 ## 📧 Contact
 
-**Author**: [Your Name]  
-**Email**: [your.email@example.com]  
-**LinkedIn**: [linkedin.com/in/yourprofile](#)  
+**Author**: [Badar Islam]  
+**Email**: [badarislam4805@gmail.com]  
+**LinkedIn**: www.linkedin.com/in/badar-islam-470426271 
 **GitHub**: [@BLACKZERO-1](https://github.com/BLACKZERO-1)
 
 ---
